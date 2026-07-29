@@ -2,9 +2,10 @@
   "name": "cursor-spending-tracker",
   "displayName": "Cursor Spending Tracker",
   "description": "Shows Auto (Cursor Models) and API (Other Models) % used in the status bar.",
-  "version": "0.1.2",
+  "version": "0.1.5",
   "publisher": "MiscoDEV",
   "license": "MIT",
+  "icon": "icon.png",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -45,7 +46,7 @@
     "watch": "tsc -watch -p ./",
     "check": "npm run compile && node out/remaining.check.js",
     "package": "npx --yes @vscode/vsce package --allow-missing-repository",
-    "install:cursor": "npm run package && cursor --install-extension ./cursor-spending-tracker-0.1.2.vsix"
+    "install:cursor": "npm run package && cursor --install-extension ./cursor-spending-tracker-0.1.5.vsix"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
