@@ -4,6 +4,7 @@
   "description": "Shows Auto (Cursor Models) and API (Other Models) % used in the status bar.",
   "version": "0.1.2",
   "publisher": "MiscoDEV",
+  "license": "MIT",
   "engines": {
     "vscode": "^1.85.0"
   },
