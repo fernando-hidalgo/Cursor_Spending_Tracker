@@ -1,0 +1,58 @@
+{
+  "name": "cursor-spending-tracker",
+  "displayName": "Cursor Spending Tracker",
+  "description": "Shows Auto (Cursor Models) and API (Other Models) % used in the status bar.",
+  "version": "0.1.2",
+  "publisher": "MiscoDEV",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "cursorSpendingTracker.refresh",
+        "title": "Cursor Spending: Refresh usage"
+      },
+      {
+        "command": "cursorSpendingTracker.openDashboard",
+        "title": "Cursor Spending: Open dashboard"
+      }
+    ],
+    "configuration": {
+      "title": "Cursor Spending Tracker",
+      "properties": {
+        "cursorSpendingTracker.refreshIntervalMinutes": {
+          "type": "number",
+          "default": 5,
+          "minimum": 1,
+          "maximum": 120,
+          "description": "How often to refresh usage percentages (minutes)."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "check": "npm run compile && node out/remaining.check.js",
+    "package": "npx --yes @vscode/vsce package --allow-missing-repository",
+    "install:cursor": "npm run package && cursor --install-extension ./cursor-spending-tracker-0.1.2.vsix"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/sql.js": "^1.4.9",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "sql.js": "^1.10.3"
+  }
+}
