@@ -71,12 +71,28 @@ function parseUsage(body: unknown): PeriodUsage {
   };
 }
 
+type FetchResult = {
+  ok: boolean;
+  status: number;
+  json(): Promise<unknown>;
+};
+
+/** Node 18+ / extension host global; typed locally so tsserver need not pull DOM. */
+const httpFetch = (
+  globalThis as unknown as {
+    fetch(
+      input: string,
+      init: { method: string; headers: Record<string, string>; body: string }
+    ): Promise<FetchResult>;
+  }
+).fetch;
+
 async function postJson(
   url: string,
   headers: Record<string, string>,
   body: unknown
 ): Promise<{ ok: boolean; status: number; json: unknown }> {
-  const res = await fetch(url, {
+  const res = await httpFetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
