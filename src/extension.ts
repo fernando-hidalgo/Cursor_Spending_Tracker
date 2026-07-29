@@ -1,11 +1,15 @@
 import * as vscode from "vscode";
-import { readCursorTokens } from "./auth";
+import {
+  cursorStateDbFromGlobalStorage,
+  readCursorTokens,
+} from "./auth";
 import { fetchPeriodUsage } from "./api";
 import { UsageStatusBar } from "./statusBar";
 
 let statusBar: UsageStatusBar | undefined;
 let timer: ReturnType<typeof setInterval> | undefined;
 let refreshing = false;
+let preferredStateDb: string | undefined;
 
 async function refresh(): Promise<void> {
   if (!statusBar || refreshing) {
@@ -14,7 +18,7 @@ async function refresh(): Promise<void> {
   refreshing = true;
   statusBar.setLoading();
   try {
-    const tokens = await readCursorTokens();
+    const tokens = await readCursorTokens(preferredStateDb);
     const usage = await fetchPeriodUsage(
       tokens.accessToken,
       tokens.refreshToken
@@ -47,6 +51,9 @@ function restartTimer(): void {
 
 export function activate(context: vscode.ExtensionContext): void {
   statusBar = new UsageStatusBar();
+  preferredStateDb = cursorStateDbFromGlobalStorage(
+    context.globalStorageUri.fsPath
+  );
 
   context.subscriptions.push(
     statusBar,

@@ -1,4 +1,9 @@
+import * as path from "path";
 import { remainingPercent, usedPercent, formatCycleEnd } from "./api";
+import {
+  cursorStateDbCandidates,
+  cursorStateDbFromGlobalStorage,
+} from "./auth";
 
 function assert(cond: boolean, msg: string): void {
   if (!cond) {
@@ -24,5 +29,44 @@ assert(
   "cycle date format"
 );
 assert(formatCycleEnd("1787247001000") !== undefined, "ms string parses");
+
+const fromGs = cursorStateDbFromGlobalStorage(
+  path.join("User", "globalStorage", "pub.ext")
+);
+assert(
+  path.basename(fromGs) === "state.vscdb",
+  "globalStorage sibling → state.vscdb"
+);
+assert(
+  path.basename(path.dirname(fromGs)) === "globalStorage",
+  "state.vscdb under globalStorage"
+);
+
+const win = cursorStateDbCandidates("win32", {}, "C:\\Users\\test");
+assert(
+  win.some((p) => p.includes(path.join("AppData", "Roaming", "Cursor"))),
+  "win candidate has AppData/Roaming/Cursor"
+);
+
+const mac = cursorStateDbCandidates("darwin", {}, "/Users/test");
+assert(
+  mac.some((p) =>
+    p.includes(path.join("Library", "Application Support", "Cursor"))
+  ),
+  "mac candidate has Library/Application Support/Cursor"
+);
+
+const linux = cursorStateDbCandidates(
+  "linux",
+  { XDG_CONFIG_HOME: "/custom/cfg" },
+  "/home/test"
+);
+assert(
+  linux[0] ===
+    path.normalize(
+      path.join("/custom/cfg", "Cursor", "User", "globalStorage", "state.vscdb")
+    ),
+  "linux prefers XDG_CONFIG_HOME"
+);
 
 console.log("remaining.check: ok");

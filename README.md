@@ -43,6 +43,16 @@ Open this folder → `npm install` → `npm run compile` → F5.
 2. Calls unofficial `GetCurrentPeriodUsage` on `api2.cursor.sh`.
 3. Shows rounded `% used` for each pool (tooltip also shows % left).
 
+### Locating `state.vscdb`
+
+Runtime prefers the DB next to the extension’s `globalStorage` folder (works with custom `--user-data-dir`). If missing, falls back to OS defaults:
+
+| OS | Path |
+|---|---|
+| Windows | `%APPDATA%\Cursor\User\globalStorage\state.vscdb` |
+| macOS | `~/Library/Application Support/Cursor/User/globalStorage/state.vscdb` |
+| Linux | `$XDG_CONFIG_HOME/Cursor/…` or `~/.config/Cursor/User/globalStorage/state.vscdb` |
+
 Unofficial API — may break if Cursor changes backends. Tokens never logged; only sent to Cursor hosts.
 
 ## Self-check

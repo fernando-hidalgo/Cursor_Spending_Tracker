@@ -8,40 +8,100 @@ export interface CursorTokens {
   refreshToken?: string;
 }
 
-function stateDbPath(): string {
-  const home = os.homedir();
-  switch (process.platform) {
-    case "win32":
-      return path.join(
-        process.env.APPDATA ?? path.join(home, "AppData", "Roaming"),
-        "Cursor",
-        "User",
-        "globalStorage",
-        "state.vscdb"
-      );
-    case "darwin":
-      return path.join(
-        home,
-        "Library",
-        "Application Support",
-        "Cursor",
-        "User",
-        "globalStorage",
-        "state.vscdb"
-      );
-    default:
-      return path.join(
-        home,
-        ".config",
-        "Cursor",
-        "User",
-        "globalStorage",
-        "state.vscdb"
-      );
-  }
+const STATE_DB = "state.vscdb";
+
+/** `…/User/globalStorage/<extId>` → sibling `state.vscdb`. */
+export function cursorStateDbFromGlobalStorage(
+  extensionGlobalStorageFsPath: string
+): string {
+  return path.normalize(
+    path.join(extensionGlobalStorageFsPath, "..", STATE_DB)
+  );
 }
 
-function readKey(db: InstanceType<Awaited<ReturnType<typeof initSqlJs>>["Database"]>, key: string): string | undefined {
+function underCursorUserGlobalStorage(base: string): string {
+  return path.join(base, "Cursor", "User", "globalStorage", STATE_DB);
+}
+
+/** OS default locations for Cursor `state.vscdb` (Win / macOS / Linux). */
+export function cursorStateDbCandidates(
+  platform: NodeJS.Platform = process.platform,
+  env: NodeJS.ProcessEnv = process.env,
+  home: string = os.homedir()
+): string[] {
+  const out: string[] = [];
+  const add = (p: string) => {
+    const n = path.normalize(p);
+    if (!out.includes(n)) {
+      out.push(n);
+    }
+  };
+
+  switch (platform) {
+    case "win32": {
+      const roaming =
+        env.APPDATA?.trim() || path.join(home, "AppData", "Roaming");
+      add(underCursorUserGlobalStorage(roaming));
+      add(
+        underCursorUserGlobalStorage(path.join(home, "AppData", "Roaming"))
+      );
+      break;
+    }
+    case "darwin":
+      add(
+        underCursorUserGlobalStorage(
+          path.join(home, "Library", "Application Support")
+        )
+      );
+      break;
+    default: {
+      const xdg = env.XDG_CONFIG_HOME?.trim();
+      if (xdg) {
+        add(underCursorUserGlobalStorage(xdg));
+      }
+      add(underCursorUserGlobalStorage(path.join(home, ".config")));
+      break;
+    }
+  }
+  return out;
+}
+
+/** First existing path among preferred + OS candidates. */
+export function resolveCursorStateDb(preferred?: string): string {
+  const tried: string[] = [];
+  const seen = new Set<string>();
+  const tryPath = (p: string | undefined): string | undefined => {
+    if (!p) {
+      return undefined;
+    }
+    const n = path.normalize(p);
+    if (seen.has(n)) {
+      return undefined;
+    }
+    seen.add(n);
+    tried.push(n);
+    return fs.existsSync(n) ? n : undefined;
+  };
+
+  const hit =
+    tryPath(preferred) ??
+    cursorStateDbCandidates().reduce<string | undefined>(
+      (found, c) => found ?? tryPath(c),
+      undefined
+    );
+
+  if (hit) {
+    return hit;
+  }
+  throw new Error(
+    `Cursor state DB not found. Tried:\n${tried.map((p) => `  - ${p}`).join("\n")}`
+  );
+}
+
+function readKey(
+  db: InstanceType<Awaited<ReturnType<typeof initSqlJs>>["Database"]>,
+  key: string
+): string | undefined {
   const stmt = db.prepare("SELECT value FROM ItemTable WHERE key = ?");
   try {
     stmt.bind([key]);
@@ -56,13 +116,15 @@ function readKey(db: InstanceType<Awaited<ReturnType<typeof initSqlJs>>["Databas
 }
 
 /** Reads Cursor JWT from a copy of state.vscdb (avoids locking the live DB). */
-export async function readCursorTokens(): Promise<CursorTokens> {
-  const dbPath = stateDbPath();
-  if (!fs.existsSync(dbPath)) {
-    throw new Error(`Cursor state DB not found at ${dbPath}`);
-  }
+export async function readCursorTokens(
+  preferredStateDb?: string
+): Promise<CursorTokens> {
+  const dbPath = resolveCursorStateDb(preferredStateDb);
 
-  const tmp = path.join(os.tmpdir(), `cursor-spending-${process.pid}-${Date.now()}.vscdb`);
+  const tmp = path.join(
+    os.tmpdir(),
+    `cursor-spending-${process.pid}-${Date.now()}.vscdb`
+  );
   fs.copyFileSync(dbPath, tmp);
 
   try {
@@ -74,7 +136,9 @@ export async function readCursorTokens(): Promise<CursorTokens> {
     try {
       const accessToken = readKey(db, "cursorAuth/accessToken");
       if (!accessToken) {
-        throw new Error("cursorAuth/accessToken missing — are you signed into Cursor?");
+        throw new Error(
+          "cursorAuth/accessToken missing — are you signed into Cursor?"
+        );
       }
       return {
         accessToken,
