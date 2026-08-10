@@ -24,20 +24,42 @@ export function remainingPercent(used: number): number {
   return usedPercent(100 - (Number.isFinite(used) ? used : 100));
 }
 
-/** Format cycle end as DD/MM/YY HH:MM (local time). */
-export function formatCycleEnd(msOrIso: number | string): string | undefined {
+function parseCycleMs(msOrIso: number | string): number | undefined {
   const ms =
     typeof msOrIso === "number"
       ? msOrIso
       : Number.isFinite(Number(msOrIso)) && /^\d+$/.test(msOrIso.trim())
         ? Number(msOrIso)
         : Date.parse(msOrIso);
-  if (!Number.isFinite(ms)) {
+  return Number.isFinite(ms) ? ms : undefined;
+}
+
+/** Format cycle end as DD/MM/YY HH:MM (local time). */
+export function formatCycleEnd(msOrIso: number | string): string | undefined {
+  const ms = parseCycleMs(msOrIso);
+  if (ms === undefined) {
     return undefined;
   }
   const d = new Date(ms);
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${String(d.getFullYear()).slice(-2)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/** Days and hours until cycle end (floored; past end → 0). */
+export function formatCycleRemaining(
+  msOrIso: number | string,
+  now = Date.now()
+): string | undefined {
+  const ms = parseCycleMs(msOrIso);
+  if (ms === undefined) {
+    return undefined;
+  }
+  const totalH = Math.floor(Math.max(0, ms - now) / 3_600_000);
+  const days = Math.floor(totalH / 24);
+  const hours = totalH % 24;
+  const dayPart = days === 1 ? "1 day" : `${days} days`;
+  const hourPart = hours === 1 ? "1 hour" : `${hours} hours`;
+  return `${dayPart}, ${hourPart} left`;
 }
 
 function asNumber(v: unknown, fallback = 0): number {
@@ -59,7 +81,10 @@ function parseUsage(body: unknown): PeriodUsage {
   let billingCycleEnd: string | undefined;
   const rawEnd = root.billingCycleEnd;
   if (typeof rawEnd === "number" || typeof rawEnd === "string") {
-    billingCycleEnd = formatCycleEnd(rawEnd);
+    const when = formatCycleEnd(rawEnd);
+    const left = formatCycleRemaining(rawEnd);
+    billingCycleEnd =
+      when && left ? `${when} (${left})` : when;
   }
 
   return {

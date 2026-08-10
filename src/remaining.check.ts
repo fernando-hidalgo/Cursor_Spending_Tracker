@@ -1,5 +1,10 @@
 import * as path from "path";
-import { remainingPercent, usedPercent, formatCycleEnd } from "./api";
+import {
+  remainingPercent,
+  usedPercent,
+  formatCycleEnd,
+  formatCycleRemaining,
+} from "./api";
 import {
   cursorStateDbCandidates,
   cursorStateDbFromGlobalStorage,
@@ -29,6 +34,21 @@ assert(
   "cycle date format"
 );
 assert(formatCycleEnd("1787247001000") !== undefined, "ms string parses");
+
+const now = 1_700_000_000_000;
+const end = now + 2 * 86_400_000 + 5 * 3_600_000 + 30 * 60_000;
+assert(
+  formatCycleRemaining(end, now) === "2 days, 5 hours left",
+  "2d 5h left"
+);
+assert(
+  formatCycleRemaining(now - 1, now) === "0 days, 0 hours left",
+  "past end → 0"
+);
+assert(
+  formatCycleRemaining(now + 3_600_000, now) === "0 days, 1 hour left",
+  "1 hour singular"
+);
 
 const fromGs = cursorStateDbFromGlobalStorage(
   path.join("User", "globalStorage", "pub.ext")
