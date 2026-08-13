@@ -2,34 +2,51 @@ import * as vscode from "vscode";
 import type { PeriodUsage } from "./api";
 
 const WARN_USED = 80;
+const WARN_FG = "#FF6B35";
 
 export class UsageStatusBar {
-  private readonly item: vscode.StatusBarItem;
+  private readonly autoItem: vscode.StatusBarItem;
+  private readonly apiItem: vscode.StatusBarItem;
 
   constructor() {
-    this.item = vscode.window.createStatusBarItem(
+    this.autoItem = vscode.window.createStatusBarItem(
+      vscode.StatusBarAlignment.Right,
+      101
+    );
+    this.apiItem = vscode.window.createStatusBarItem(
       vscode.StatusBarAlignment.Right,
       100
     );
-    this.item.command = "cursorSpendingTracker.refresh";
-    this.item.tooltip = "Cursor usage — click to refresh";
-    this.item.show();
+    for (const item of [this.autoItem, this.apiItem]) {
+      item.command = "cursorSpendingTracker.refresh";
+      item.tooltip = "Cursor usage — click to refresh";
+      item.show();
+    }
   }
 
   setLoading(): void {
-    this.item.text = "$(sync~spin) Auto · API";
-    this.item.backgroundColor = undefined;
-    this.item.tooltip = "Refreshing Cursor usage…";
+    this.autoItem.text = "$(sync~spin) Auto";
+    this.apiItem.text = "API";
+    this.clearWarn();
+    this.autoItem.backgroundColor = undefined;
+    this.apiItem.backgroundColor = undefined;
+    this.apiItem.show();
+    const tip = "Refreshing Cursor usage…";
+    this.autoItem.tooltip = tip;
+    this.apiItem.tooltip = tip;
   }
 
   setUsage(usage: PeriodUsage): void {
     // Same % used labels as Settings → Plan & Usage
-    this.item.text = `Auto ${usage.autoPercentUsed}% · API ${usage.apiPercentUsed}%`;
-    const high =
-      usage.autoPercentUsed >= WARN_USED || usage.apiPercentUsed >= WARN_USED;
-    this.item.backgroundColor = high
-      ? new vscode.ThemeColor("statusBarItem.warningBackground")
-      : undefined;
+    this.autoItem.text = `Auto ${usage.autoPercentUsed}%`;
+    this.apiItem.text = `API ${usage.apiPercentUsed}%`;
+    this.autoItem.backgroundColor = undefined;
+    this.apiItem.backgroundColor = undefined;
+    this.autoItem.color =
+      usage.autoPercentUsed >= WARN_USED ? WARN_FG : undefined;
+    this.apiItem.color =
+      usage.apiPercentUsed >= WARN_USED ? WARN_FG : undefined;
+    this.apiItem.show();
 
     const lines = [
       `Cursor Models (Auto): ${usage.autoPercentUsed}% used (${usage.autoRemaining}% left)`,
@@ -39,18 +56,31 @@ export class UsageStatusBar {
       lines.push(`Cycle ends: ${usage.billingCycleEnd}`);
     }
     lines.push("Click to refresh");
-    this.item.tooltip = lines.join("\n");
+    const tip = lines.join("\n");
+    this.autoItem.tooltip = tip;
+    this.apiItem.tooltip = tip;
   }
 
   setError(message: string): void {
-    this.item.text = "$(warning) Auto · API";
-    this.item.backgroundColor = new vscode.ThemeColor(
-      "statusBarItem.errorBackground"
-    );
-    this.item.tooltip = `${message}\nClick to retry`;
+    this.autoItem.text = "$(warning) Auto · API";
+    this.apiItem.text = "";
+    this.apiItem.hide();
+    this.clearWarn();
+    const errBg = new vscode.ThemeColor("statusBarItem.errorBackground");
+    this.autoItem.backgroundColor = errBg;
+    this.apiItem.backgroundColor = errBg;
+    const tip = `${message}\nClick to retry`;
+    this.autoItem.tooltip = tip;
+    this.apiItem.tooltip = tip;
   }
 
   dispose(): void {
-    this.item.dispose();
+    this.autoItem.dispose();
+    this.apiItem.dispose();
+  }
+
+  private clearWarn(): void {
+    this.autoItem.color = undefined;
+    this.apiItem.color = undefined;
   }
 }
