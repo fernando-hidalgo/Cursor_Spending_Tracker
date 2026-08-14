@@ -9,13 +9,16 @@ export class UsageStatusBar {
   private readonly apiItem: vscode.StatusBarItem;
 
   constructor() {
+    // Right align: lower priority = farther right. Diff of 1 keeps Auto+API grouped.
     this.autoItem = vscode.window.createStatusBarItem(
+      "cursorSpending.auto",
       vscode.StatusBarAlignment.Right,
-      101
+      Number.MIN_SAFE_INTEGER + 1
     );
     this.apiItem = vscode.window.createStatusBarItem(
+      "cursorSpending.api",
       vscode.StatusBarAlignment.Right,
-      100
+      Number.MIN_SAFE_INTEGER
     );
     for (const item of [this.autoItem, this.apiItem]) {
       item.command = "cursorSpendingTracker.refresh";
