@@ -22,7 +22,7 @@ export class UsageStatusBar {
     );
     for (const item of [this.autoItem, this.apiItem]) {
       item.command = "cursorSpendingTracker.refresh";
-      item.tooltip = "Cursor usage — click to refresh";
+      item.tooltip = "Cursor usage";
       item.show();
     }
   }
@@ -51,15 +51,7 @@ export class UsageStatusBar {
       usage.apiPercentUsed >= WARN_USED ? WARN_FG : undefined;
     this.apiItem.show();
 
-    const lines = [
-      `Cursor Models (Auto): ${usage.autoPercentUsed}% used (${usage.autoRemaining}% left)`,
-      `Other Models (API): ${usage.apiPercentUsed}% used (${usage.apiRemaining}% left)`,
-    ];
-    if (usage.billingCycleEnd) {
-      lines.push(`Cycle ends: ${usage.billingCycleEnd}`);
-    }
-    lines.push("Click to refresh");
-    const tip = lines.join("\n");
+    const tip = usage.billingCycleEnd ?? "Cursor usage";
     this.autoItem.tooltip = tip;
     this.apiItem.tooltip = tip;
   }
@@ -72,7 +64,7 @@ export class UsageStatusBar {
     const errBg = new vscode.ThemeColor("statusBarItem.errorBackground");
     this.autoItem.backgroundColor = errBg;
     this.apiItem.backgroundColor = errBg;
-    const tip = `${message}\nClick to retry`;
+    const tip = message;
     this.autoItem.tooltip = tip;
     this.apiItem.tooltip = tip;
   }
