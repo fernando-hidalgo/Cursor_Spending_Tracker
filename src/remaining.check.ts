@@ -1,3 +1,4 @@
+import * as crypto from "crypto";
 import * as path from "path";
 import {
   remainingPercent,
@@ -9,6 +10,14 @@ import {
   cursorStateDbCandidates,
   cursorStateDbFromGlobalStorage,
 } from "./auth";
+import {
+  CURSOR_SAFE_STORAGE_PREFIX,
+  decryptCursorSafeStorage,
+  decryptOsCryptV10,
+  encryptOsCryptV10,
+  isEncryptedCursorToken,
+  localStateFromStateDb,
+} from "./oscrypt";
 
 function assert(cond: boolean, msg: string): void {
   if (!cond) {
@@ -88,5 +97,43 @@ assert(
     ),
   "linux prefers XDG_CONFIG_HOME"
 );
+
+assert(
+  isEncryptedCursorToken(`${CURSOR_SAFE_STORAGE_PREFIX}abc`) === true,
+  "detects safe-storage prefix"
+);
+assert(isEncryptedCursorToken("eyJhbGciOi") === false, "JWT not encrypted");
+
+const fromDb = localStateFromStateDb(
+  path.join("Cursor", "User", "globalStorage", "state.vscdb")
+);
+assert(
+  path.basename(fromDb) === "Local State",
+  "state.vscdb → Local State basename"
+);
+assert(
+  path.basename(path.dirname(fromDb)) === "Cursor",
+  "Local State under Cursor root"
+);
+
+const syntheticKey = crypto.randomBytes(32);
+const jwt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.sig";
+const v10 = encryptOsCryptV10(jwt, syntheticKey);
+assert(decryptOsCryptV10(v10, syntheticKey) === jwt, "v10 round-trip");
+
+const wrapped = `${CURSOR_SAFE_STORAGE_PREFIX}${v10.toString("base64")}`;
+assert(
+  decryptCursorSafeStorage(jwt, "/nonexistent", "linux") === jwt,
+  "plaintext passthrough"
+);
+try {
+  decryptCursorSafeStorage(wrapped, "/nonexistent", "linux");
+  assert(false, "encrypted on linux should throw");
+} catch (e) {
+  assert(
+    e instanceof Error && e.message.includes("only supported on Windows"),
+    "linux encrypted error message"
+  );
+}
 
 console.log("remaining.check: ok");

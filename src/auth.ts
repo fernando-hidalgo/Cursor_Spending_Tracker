@@ -2,6 +2,10 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 import initSqlJs from "sql.js";
+import {
+  decryptCursorSafeStorage,
+  localStateFromStateDb,
+} from "./oscrypt";
 
 export interface CursorTokens {
   accessToken: string;
@@ -134,15 +138,19 @@ export async function readCursorTokens(
     });
     const db = new SQL.Database(fs.readFileSync(tmp));
     try {
-      const accessToken = readKey(db, "cursorAuth/accessToken");
-      if (!accessToken) {
+      const accessRaw = readKey(db, "cursorAuth/accessToken");
+      if (!accessRaw) {
         throw new Error(
           "cursorAuth/accessToken missing — are you signed into Cursor?"
         );
       }
+      const localStatePath = localStateFromStateDb(dbPath);
+      const refreshRaw = readKey(db, "cursorAuth/refreshToken");
       return {
-        accessToken,
-        refreshToken: readKey(db, "cursorAuth/refreshToken"),
+        accessToken: decryptCursorSafeStorage(accessRaw, localStatePath),
+        refreshToken: refreshRaw
+          ? decryptCursorSafeStorage(refreshRaw, localStatePath)
+          : undefined,
       };
     } finally {
       db.close();

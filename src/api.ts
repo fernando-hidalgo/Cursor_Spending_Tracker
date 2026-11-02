@@ -147,12 +147,23 @@ export async function refreshAccessToken(refreshToken: string): Promise<string> 
   if (!ok) {
     throw new Error(`Token refresh failed (HTTP ${status})`);
   }
-  const access =
-    json && typeof json === "object" && "access_token" in json
-      ? (json as { access_token?: unknown }).access_token
+  const body =
+    json && typeof json === "object"
+      ? (json as {
+          access_token?: unknown;
+          shouldLogout?: unknown;
+        })
       : undefined;
+  if (body?.shouldLogout === true) {
+    throw new Error(
+      "Cursor session invalid (shouldLogout). Sign out/in to Cursor, or ensure tokens decrypt correctly."
+    );
+  }
+  const access = body?.access_token;
   if (typeof access !== "string" || !access) {
-    throw new Error("Token refresh response missing access_token");
+    throw new Error(
+      "Token refresh returned empty access_token — session may be expired or tokens still encrypted"
+    );
   }
   return access;
 }
